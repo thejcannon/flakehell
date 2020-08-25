@@ -13,18 +13,16 @@ def code_command(argv) -> CommandResult:
     """
     if not argv:
         return ExitCode.NO_PLUGIN_NAME, 'no plugin name provided'
-    if argv[0] == '--help':
+    if '--help' in argv:
         print(code_command.__doc__)
         return ExitCode.OK, ''
-    if len(argv) > 1:
-        return ExitCode.TOO_MANY_ARGS, 'the command accept only one argument'
-    code = argv[0]
 
     app = FlakeHellApplication(program=NAME, version=VERSION)
-    plugins = sorted(get_installed(app=app), key=lambda p: p['name'])
+    plugins = sorted(get_installed(app=app, argv=argv), key=lambda p: p['name'])
     if not plugins:
         return ExitCode.NO_PLUGINS_INSTALLED, 'no plugins installed'
 
+    code = app.args[0]
     messages = []
     checked = set()
     for plugin in plugins:

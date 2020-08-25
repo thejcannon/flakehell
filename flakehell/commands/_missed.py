@@ -11,11 +11,9 @@ def missed_command(argv) -> CommandResult:
     if argv and argv[0] == '--help':
         print(missed_command.__doc__)
         return ExitCode.OK, ''
-    if argv:
-        return ExitCode.TOO_MANY_ARGS, 'the command does not accept arguments'
 
     app = FlakeHellApplication(program=NAME, version=VERSION)
-    installed_plugins = sorted(get_installed(app=app), key=lambda p: p['name'])
+    installed_plugins = sorted(get_installed(app=app, argv=argv), key=lambda p: p['name'])
     if not installed_plugins:
         return ExitCode.NO_PLUGINS_INSTALLED, 'no plugins installed'
 

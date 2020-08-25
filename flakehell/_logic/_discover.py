@@ -22,11 +22,11 @@ ALIASES = {
 }
 
 
-def get_installed(app) -> Iterator[Dict[str, Any]]:
+def get_installed(app, argv=[]) -> Iterator[Dict[str, Any]]:
     plugins_codes = defaultdict(list)
     versions = dict()
 
-    app.initialize([])
+    app.initialize(argv)
     codes: Iterable[str]
 
     for check_type in ('ast_plugins', 'logical_line_plugins', 'physical_line_plugins'):

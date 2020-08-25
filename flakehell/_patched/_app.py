@@ -1,9 +1,8 @@
 # built-in
 import sys
-from argparse import ArgumentParser
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 # external
 from flake8.main.application import Application
@@ -57,34 +56,16 @@ class FlakeHellApplication(Application):
         group.add_argument('--safe', action='store_true', help='suppress exceptions from plugins')
         self._option_manager = manager
 
-    def get_toml_config(self, path: Path = None) -> Dict[str, Any]:
+    def get_toml_config(self, path: Path = None, additional_bases: List[Path] = []) -> Dict[str, Any]:
         if path is not None:
-            return read_config(path)
+            return read_config(*additional_bases, path)
         # lookup for config from current dir up to root
         root = Path().resolve()
         for dir_path in chain([root], root.parents):
             path = dir_path / 'pyproject.toml'
             if path.exists():
-                return read_config(path)
+                return read_config(*additional_bases, path)
         return dict()
-
-    @staticmethod
-    def extract_toml_config_path(argv: List[str]) -> Tuple[Optional[Path], List[str]]:
-        if not argv:
-            return None, argv
-
-        if '--help' in argv:
-            argv = argv.copy()
-            argv.remove('--help')
-            if not argv:
-                return None, ['--help']
-
-        parser = ArgumentParser()
-        parser.add_argument('--config')
-        known, unknown = parser.parse_known_args(argv)
-        if known.config and known.config.endswith('.toml'):
-            return Path(known.config).expanduser(), unknown
-        return None, argv
 
     def parse_configuration_and_cli(self, config_finder, argv: List[str]) -> None:
         parser = self.option_manager.parser
@@ -96,9 +77,16 @@ class FlakeHellApplication(Application):
                 continue
             parser._handle_conflict_resolve(None, [(name, action)])
 
-        # if passed `--config` with path to TOML-config, we should extract it
-        # before passing into flake8 mechanisms
-        config_path, argv = self.extract_toml_config_path(argv=argv)
+        # Read --config file
+        config_path = None
+        if config_finder.config_file and config_finder.config_file.endswith('.toml'):
+            config_path = Path(config_finder.config_file).expanduser()
+
+        # Read --append-config files and treat them as additional bases
+        additional_bases = []
+        for extra_config_file in config_finder.extra_config_files:
+            if extra_config_file.endswith('.toml'):
+                additional_bases.append(Path(extra_config_file).expanduser())
 
         # make default config
         config, _ = self.option_manager.parse_args([])
@@ -107,7 +95,7 @@ class FlakeHellApplication(Application):
         # patch config wtih TOML
         # If config is explicilty passed, it will be used
         # If config isn't specified, flakehell will lookup for it
-        config.__dict__.update(self.get_toml_config(config_path))
+        config.__dict__.update(self.get_toml_config(config_path, additional_bases))
 
         # Parse CLI options and legacy flake8 configs.
         # Based on `aggregate_options`.
